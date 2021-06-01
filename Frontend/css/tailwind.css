@@ -1,0 +1,10 @@
+.hello{
+    color: blue;
+}
+body {
+    background-image: url("img/backgroundc4.jpeg");
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

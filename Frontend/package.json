@@ -1,0 +1,32 @@
+{
+  "name": "Website_FinalWork",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adilelgham/Website_FinalWork.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/adilelgham/Website_FinalWork/issues"
+  },
+  "homepage": "https://github.com/adilelgham/Website_FinalWork#readme",
+  "dependencies": {
+    "autoprefixer": "^10.2.5",
+    "bcrypt": "^5.0.1",
+    "handlebars": "^4.7.7",
+    "nunjucks": "^3.2.3",
+    "postcss": "^8.2.13",
+    "tailwindcss": "^2.1.1",
+    "vite": "^2.2.4"
+  },
+  "devDependencies": {
+    "stylelint-config-recommended": "^4.0.0"
+  },
+  "description": ""
+}
