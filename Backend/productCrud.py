@@ -9,6 +9,8 @@ import label_image
 
 
 
+
+
 auth = HTTPBasicAuth()
 product_api = Blueprint('product_api', __name__)
 
@@ -40,8 +42,8 @@ def send_predictionRes():
             text = label_image.main(image)
             img = cv2.imread(image)
             return img,text
-
         img,text = load_image('./image/case01wd03id01.jpg')
+        
         return Response(response=json.dumps(text), status=200, mimetype="application/json")
 
     except Exception as ex:
@@ -66,19 +68,21 @@ def create_product():
                     break
                 else:
                     file_object.write(name)
-        
-        
 
-        return Response(
-            response=json.dumps(
-                {"message": "product created",
-                 "id": f"{dbResponse.inserted_id}"
-                 }),
-            status=200,
-            mimetype="application/json"
-        )
+        data = list(db.produts.find())
+        
+        for productdb in data:
+            
+            if(product['name'] == productdb['name']):
+                print('Product already exist')
+                return Response(response=json.dumps({"message": "product already exist"}), status=409,mimetype="application/json")
+            else:
+                return Response(response=json.dumps({"message": "product created", "id": f"{dbResponse.inserted_id}"}),status=200, mimetype="application/json")
+   
     except Exception as ex:
         print(ex)
+        return Response(response=json.dumps({"message": "Product not created"}), status=500, mimetype="application/json")
+
 # Get all products
 
 

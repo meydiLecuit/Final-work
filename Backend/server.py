@@ -4,20 +4,42 @@ from userCrud import user_api
 from productCrud import product_api
 from flask_cors import CORS
 from connection import db
+from flask_bcrypt import Bcrypt
 import json
 from werkzeug.utils import secure_filename
 import os
-#import tensorflow as tf
 import errno
 from tensorflow.keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
+import jwt
+import datetime
+from functools import wraps
 
-
-auth = HTTPBasicAuth()
 app = Flask(__name__)
 app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
 CORS(app)
+bcrypt = Bcrypt(app)
 app.register_blueprint(user_api)
 app.register_blueprint(product_api)
+# def token_required(f):
+#     @wraps(f)
+#     def decorated(*args, **kwargs):
+#         token = none
+
+#         if 'x-access-token' in request.headers:
+#             token = request.headers['x-access-token']
+#         if not token:
+#             return Response(response=json.dumps({"message":'Token is missing'}), status=401)
+        
+#         try:
+#             data = jwt.decode(token, app.secret_key)
+#             current_user = db.users.find_one( {"_id": data['_id']} )
+#         except:
+#             return Response(response=json.dumps({"message":'Token is invalid'}), status=401)
+
+#         return f(current_user, *args, **kwargs)
+
+#     return decorated
+
 
 
 
@@ -47,7 +69,7 @@ def allowed_file(filename):
 def upload_file():
     if request.method == 'POST':
 
-        print(request)
+       
         if 'files[]' not in request.files:
             flash('No file part')
             return Response(response=json.dumps({"message":'No file part'}), status=500, mimetype="application/json")
@@ -90,7 +112,7 @@ def upload_file():
                     break      
                 
         for file in files:
-            print(file.filename)
+            
             if file and allowed_file(file.filename):
                 filename = secure_filename(file.filename)
                 file.save(os.path.join(path, filename))
@@ -104,6 +126,39 @@ def upload_file():
         return Response(response=json.dumps({"message":'File successfully uploaded'}), status=200, mimetype="application/json")
 
 
+@app.route("/createUser", methods=["POST"])
+def create_user():
+    try:
+        password = request.form["password"]
+        pw_hash = bcrypt.generate_password_hash(password)
+        
+        User = {"name": request.form["name"],
+                "lastName": request.form["lastName"],
+                "username": request.form["username"],
+                "email": request.form["email"],
+                "password": pw_hash,
+                "admin": request.form["admin"]
+                }
+        
+        data = list(db.users.find())
+           
+        
+        for userdb in data:
+            
+            if(User['email'] == userdb['email']):
+                print('User already exist')
+                return Response(response=json.dumps({"message": "user already exist"}), status=409,mimetype="application/json")
+            else:
+                print('Good')
+                dbResponse = db.users.insert_one(User)
+                return Response(response=json.dumps({"message": "user created"}),status=200,mimetype="application/json")
+
+       
+              
+        
+    except Exception as ex:
+        print(ex)
+        return Response(response=json.dumps({"message": "User not created"}), status=500, mimetype="application/json")
 
 
 
@@ -111,21 +166,22 @@ def upload_file():
 def login():
   
 
-    user = {"username": request.form["username"],
+    user = {"email": request.form["email"],
                 "password": request.form["password"]}
     
 
-    userDb = db.users.find_one( {"username": user['username']} )
-    
-    
-
-    if userDb['username'] == user['username'] and user['password'] == userDb['password']:
+    userDb = db.users.find_one( {"email": user['email']} )
+    #userDb['password'] == user['username']
+    passwordDb =userDb['password']
+    #bcrypt.check_password_hash(passwordDb, user['password'])
+    if userDb['email'] == user['email'] and bcrypt.check_password_hash(passwordDb, user['password'])   :
+     #   token = jwt.encode({'_id': userDb['_id'], 'exp': datetime.datetime.utcnow()+ datetime.timedelta(minutes=30)})
         sessionUser = {}
         sessionUser['ID'] = str(userDb['_id'])
-        sessionUser['username'] = user['username']
+        sessionUser['email'] = user['email']
         sessionUser['isLogedIn'] = True
         
-        return Response(response=json.dumps(sessionUser), status=200, mimetype="application/json")
+        return Response(response=json.dumps(sessionUser ), status=200, mimetype="application/json")
 
     else:
         return Response(response=json.dumps({"message": "Wrong password"}), status=500)

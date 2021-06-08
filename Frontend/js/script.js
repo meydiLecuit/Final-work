@@ -1,12 +1,9 @@
-'use strict';
-//import bcrypt from 'bcrypt';
-
 async function login() {
     let url = 'http://localhost/login';
 
     let formData = new FormData();
 
-    formData.append('username', document.getElementById("username").value)
+    formData.append('email', document.getElementById("email").value)
     formData.append('password', document.getElementById("password").value)
     try {
         let res = await fetch(url, {
@@ -64,9 +61,9 @@ async function isAthenticated()
         if(jsonData != null)
         {
             let jsonData = JSON.parse(data);
-            if(jsonData["username"] !== 'undefined'){
+            if(jsonData["email"] !== 'undefined'){
                 sessiondata = JSON.parse(data);
-                isLogedIn =sessiondata.isLogedIn;
+                isLogedIn = sessiondata.isLogedIn;
                 id = JSON.parse(data).ID;
                 user = await getUser(id);
             }
@@ -74,9 +71,9 @@ async function isAthenticated()
             
         if(sessiondata === null || isLogedIn === false || user === null)
         {
-            
+            alert('Authentication Failed!');
              window.location.replace("http://localhost:3000");
-             alert('Authentication Failed!');
+             
         }
     }
  
@@ -122,7 +119,7 @@ async function getProduct(id) {
 }
 
 async function getUser(id) {
-    let url = 'http://localhost//getUser/' + id;
+    let url = 'http://localhost/getUser/' + id;
     try {
         let res = await fetch(url);
         return await res.json();
@@ -144,6 +141,22 @@ async function deleteProduct(id){
     } catch (error) {
         console.log(error);
         console.log("Product is not deleted");
+
+    }
+    
+}
+
+async function deleteUser(id){
+    
+    let url = 'http://localhost/deleteUser/' + id;
+    try {
+        let res = await fetch(url, {method: 'DELETE'});
+        window.location.reload();
+        return await res.json();
+        
+    } catch (error) {
+        console.log(error);
+        console.log("User is not deleted");
 
     }
     
@@ -172,6 +185,32 @@ async function editSave(id) {
 
     }
 }
+
+async function editUserSave(id) {
+    let url = 'http://localhost/editUser/' + id;
+
+    let formData = new FormData();
+
+    formData.append('name', document.getElementById("voornaam").value)
+    formData.append('lastName', document.getElementById("achternaam").value)
+    formData.append('username', document.getElementById("username").value)
+    formData.append('email', document.getElementById("email").value)
+
+    
+    try {
+        let res = await fetch(url, {
+            method: 'PATCH',
+            body: formData
+    
+    });
+        console.log("data sent edit");
+        return await res.json();
+    } catch (error) {
+        console.log(error);
+        console.log("Products not edited");
+
+    }
+}
 async function loadEditPage(id){
     let product = await getProduct(id);
 
@@ -184,6 +223,22 @@ async function loadEditPage(id){
     if(document.getElementById('merk').value != null){
     document.getElementById('merk').value = product.merk;
     }
+
+}async function loadEditUserPage(id){
+    let user = await getUser(id);
+
+    if(document.getElementById('voornaam').value != null){
+    document.getElementById('voornaam').value = user.name;
+    }
+    if(document.getElementById('achternaam').value != null){
+    document.getElementById('achternaam').value = user.lastName;
+    }
+    if(document.getElementById('username').value != null){
+    document.getElementById('username').value = user.username;
+    }
+    if(document.getElementById('email').value != null){
+        document.getElementById('email').value = user.email;
+        }
 
 }
 
@@ -284,10 +339,12 @@ async function savePicture(){
 
 
 }
+
 async function registerSave() {
     let url = 'http://localhost/createUser';
-
-    let users = await getUsers();
+    
+    
+      //  let users = await getUsers();
     
     let formData = new FormData();
 
@@ -299,18 +356,10 @@ async function registerSave() {
     let password2 = document.getElementById('password2').value;
     let admin = 0
 
-    const salt = await bcrypt.genSalt(10);
     if(document.getElementById("admin").checked){
         admin = document.getElementById("admin").value;
     }
-    let checkDb = false;
 
-
-    users.forEach(user => {
-        if(user.name === name && user.lastName === lastName){
-            checkDb = true;
-        }
-    });
 
     if(name === '' || lastName === '' || email === '' ){
         document.getElementById('alert').innerHTML = `<div class="bg-red-200 relative text-red-500 py-3 px-3 rounded-lg">
@@ -322,11 +371,6 @@ async function registerSave() {
         wachtwoord moet meer dan 6 karakters bevatten
     </div>` ;
     }
-    else if(checkDb === true){
-        document.getElementById('alert').innerHTML = `<div class="bg-red-200 relative text-red-500 py-3 px-3 rounded-lg">
-        User ${name} ${lastName} bestaat al
-    </div>` ;
-    }
     else{
 
         if(password1 === password2){
@@ -334,7 +378,7 @@ async function registerSave() {
             formData.append('lastName', lastName);
             formData.append('username', username);
             formData.append('email', email);
-            formData.append('password', await bcrypt.hash(password2, salt));
+            formData.append('password',password2);
             formData.append('admin', admin);
 
             
@@ -348,9 +392,17 @@ async function registerSave() {
             document.getElementById('alert').innerHTML = `<div class="bg-green-200 relative text-green-500 py-3 px-3 rounded-lg">
             User succesvol opgeslagen!
         </div>`
+        if(res.status == 409)
+        {
+            document.getElementById('alert').innerHTML = `<div class="bg-red-200 relative text-red-500 py-3 px-3 rounded-lg">
+            User ${name} ${lastName} bestaat al
+        </div>` ;
+        }
             return await res.json();
         } catch (error) {
             console.log(error);
+         
+
             console.log("User is not created");
     
         }
@@ -361,9 +413,12 @@ async function registerSave() {
 
     }
     }
+      
+
 
 
 }
+
 
 async function renderProducts() {
     let products = await getProducts();
@@ -406,16 +461,67 @@ async function renderProducts() {
             window.location.href='editProduct.html';
         });
         }
-        document.getElementById(`delete${product._id}`).addEventListener('click', function(){
+        document.getElementById(`delete${product._id}`).addEventListener('click', function(e){
 
+            e.preventDefault();
             deleteProduct(product._id);
         });
         
     });
 }
 
+async function renderUsers() {
+    let users = await getUsers();
+    let html = '';
+    users.forEach(user => {
+        let htmlSegment = `    
+                                <li>Voornaam: ${user.name} </li>
+                                <li>Achternaam: ${user.lastName}</li>
+                                <li>Username: ${user.username}</li>
+                                <li>Email: ${user.email}</li>
+                                <br>
+                                <button id="${user._id}" value="${user._id}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 border border-blue-700 rounded">
+                                Edit
+                            </button>
+                              <button id="delete${user._id}" value="${user._id}" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 border border-red-700 rounded">
+                                Delete
+                              </button>
+                              <hr class="border-solid border-4 border-gray-900 ">
+                            
+                        `;                    
+        
+                        html += htmlSegment;
+                       
+
+    });
+
+  
+
+    let container = document.getElementById('listUsers');
+    if(container != null){
+        container.innerHTML = html;
+    }
+
+
+    users.forEach(user => {
+        let button = document.getElementById(`${user._id}`);
+        
+        if(button != null){
+        button.addEventListener("click", function(){
+            localStorage.setItem('editIdUser', button.value);
+            window.location.href='editUser.html';
+        });
+        }
+        document.getElementById(`delete${user._id}`).addEventListener('click', function(){
+
+            deleteUser(user._id);
+        });
+        
+    });
+}
 
 let hpCharacters = [];
+let hpUsers = [];
 if(document.getElementById('list') != null){
 
     document.getElementById('searchInput').addEventListener('keyup', (e) => {
@@ -481,7 +587,76 @@ const displayCharacters = (products) => {
     
 };
 
+if(document.getElementById('listUsers') != null){
+
+    document.getElementById('searchInputUsers').addEventListener('keyup', (e) => {
+        const searchStringUser = e.target.value.toLowerCase();
+        const filteredUsers = hpUsers.filter((user) => {
+        
+            return (
+                user.name.toLowerCase().includes(searchStringUser) ||
+                user.lastName.toLowerCase().includes(searchStringUser) ||
+                user.email.toLowerCase().includes(searchStringUser) ||
+                user.email.toLowerCase().includes(searchStringUser)
+                );
+    
+            });
+    
+            displayUsers(filteredUsers);
+});
+}
+const loadUsers = async () => {
+    try {
+        const res = await fetch('http://localhost/getUsers');
+        hpUsers = await res.json();
+        displayUsers(hpUsers);
+    } catch (err) {
+        console.error(err);
+    }
+};
+
+const displayUsers = (users) => {
+    const htmlStringUsers = users
+        .map((user) => {
+            return `    
+            <li>Voornaam: ${user.name} </li>
+            <li>Achternaam: ${user.lastName}</li>
+            <li>Username: ${user.username}</li>
+            <li>email: ${user.email}</li>
+            <br>
+            <button id="${user._id}" value="${user._id}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 border border-blue-700 rounded" onclick="window.location.href='editProduct.html';">
+            Edit
+        </button>
+          <button id="delete${user._id}" value="${user._id}" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 border border-red-700 rounded">
+            Delete
+          </button>
+          <hr class="border-solid border-4 border-gray-900 ">
+          `;
+        })
+        .join('');
+        document.getElementById('listUsers').innerHTML = htmlStringUsers;
+
+        users.forEach(user => {
+            let button = document.getElementById(`${user._id}`);
+            
+            if(button != null){
+            button.addEventListener("click", function(){
+                localStorage.setItem('editId', button.value);
+                window.location.href='editProduct.html';
+            });
+            }
+            document.getElementById(`delete${user._id}`).addEventListener('click', function(){
+    
+                deleteUser(user._id);
+            });
+            
+        });
+    
+    
+};
+
 window.onload = async () => {
+    isAthenticated();
    if(document.getElementById('menu') != null){
     let data = sessionStorage.getItem('userSession');
     let id = JSON.parse(data).ID;
@@ -494,14 +669,32 @@ window.onload = async () => {
         <a href="admin.html" class="p-4">Admin</a>`;
     }
     }
-    isAthenticated();
+   if(document.getElementById('administrator') != null){
+    let data = sessionStorage.getItem('userSession');
+    let id = JSON.parse(data).ID;
+    let user = await getUser(id);
+    console.log(user["admin"] + "check");
+    if(user["admin"] == 0 || user == null){
+        alert('You are not authorized to access this page');
+        window.location.href='home.html';
+    }
+}
+    
     
     if(document.getElementById('list') != null){
     renderProducts();
     loadCharacters();
+    }    
+    if(document.getElementById('listUsers') != null){
+        renderUsers();
+        loadUsers();
     }
+
     if(document.getElementById('prijs') != null){
     loadEditPage(localStorage.getItem('editId'));
+    }
+    if(document.getElementById('achternaam') != null){
+        loadEditUserPage(localStorage.getItem('editIdUser'));
     }
  
     if(document.querySelector('.js-password-toggle') != null){
@@ -576,6 +769,15 @@ if(document.getElementById('editButton') != null){
         e.preventDefault();
 
         editSave(localStorage.getItem('editId'))
+    
+    })
+}
+
+if(document.getElementById('editButtonUser') != null){
+    document.getElementById('editButtonUser').addEventListener("click",  async function (e) {
+        e.preventDefault();
+
+        editUserSave(localStorage.getItem('editIdUser'));
     
     })
 }
