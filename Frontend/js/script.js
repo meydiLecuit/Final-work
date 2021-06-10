@@ -252,7 +252,7 @@ async function createProductSave(){
     let prijs = document.getElementById('prijs').value;
     let merk = document.getElementById('merk').value;
 
-    let checkDb = false;
+    
 
     products.forEach(product => {
         if(product.name === name && product.prijs === prijs && product.merk === merk){
@@ -263,11 +263,6 @@ async function createProductSave(){
     if(naam === '' || prijs === '' || merk === '' ){
         document.getElementById('alert').innerHTML = `<div class="bg-red-200 relative text-red-500 py-3 px-3 rounded-lg">
         Gelieve heel het formulier in te vullen
-    </div>` ;
-    }
-    if(checkDb == true){
-        document.getElementById('alert').innerHTML = `<div class="bg-red-200 relative text-red-500 py-3 px-3 rounded-lg">
-        Product ${name} ${merk} bestaat al
     </div>` ;
     }
     else{
@@ -285,6 +280,13 @@ async function createProductSave(){
         document.getElementById('alert').innerHTML = `<div class="bg-green-200 relative text-green-500 py-3 px-3 rounded-lg">
         Het Product is succesvol opgeslagen!
     </div>`
+
+    if(res.status == 409)
+    {
+        document.getElementById('alert').innerHTML = `<div class="bg-red-200 relative text-red-500 py-3 px-3 rounded-lg">
+        Product ${name} ${merk} bestaat al
+    </div>` ;
+    }
         return await res.json();
     } catch (error) {
         console.log(error);
