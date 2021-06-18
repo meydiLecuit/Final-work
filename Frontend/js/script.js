@@ -1,10 +1,13 @@
+
 async function login() {
     let url = 'http://localhost/login';
 
     let formData = new FormData();
-
-    formData.append('email', document.getElementById("email").value)
-    formData.append('password', document.getElementById("password").value)
+    
+        formData.append('email', document.getElementById("email").value)
+        formData.append('password', document.getElementById("password").value)
+    
+    
     try {
         let res = await fetch(url, {
             method: 'POST',
@@ -28,10 +31,12 @@ async function login() {
 async function loadSession()
 {
     let data = await login();
-
-    let session = JSON.stringify(data);
-
-
+    console.log("Token is "+data['token'])
+    let session = JSON.stringify(data['session']);
+    let token = data['token'];
+    
+    
+    sessionStorage['token'] = token
     sessionStorage['userSession'] = session;
     if(data != null){
     window.location.replace("http://localhost:3000/home.html");
@@ -39,7 +44,7 @@ async function loadSession()
     else{
         alert("Login credentials are not correct!");
     }
-
+    return token;
 }
 
 async function isAthenticated()
@@ -96,8 +101,9 @@ async function getProducts() {
 
 async function getUsers() {
     let url = 'http://localhost/getUsers';
+
     try {
-        let res = await fetch(url);
+        let res = await fetch(url,{headers: {Authorization: sessionStorage.getItem('token') }});
         return await res.json();
     } catch (error) {
         console.log(error);
@@ -121,7 +127,9 @@ async function getProduct(id) {
 async function getUser(id) {
     let url = 'http://localhost/getUser/' + id;
     try {
-        let res = await fetch(url);
+        
+        
+        let res = await fetch(url,{headers: {Authorization: sessionStorage.getItem('token') }});
         return await res.json();
     } catch (error) {
         console.log(error);
@@ -150,7 +158,7 @@ async function deleteUser(id){
     
     let url = 'http://localhost/deleteUser/' + id;
     try {
-        let res = await fetch(url, {method: 'DELETE'});
+        let res = await fetch(url, {method: 'DELETE', headers: {Authorization: sessionStorage.getItem('token')}});
         window.location.reload();
         return await res.json();
         
@@ -198,8 +206,8 @@ async function editUserSave(id) {
 
     
     try {
-        let res = await fetch(url, {
-            method: 'PATCH',
+        let res = await fetch(url,
+           {method: 'PATCH', headers: {Authorization: sessionStorage.getItem('token')},
             body: formData
     
     });
@@ -227,6 +235,7 @@ async function loadEditPage(id){
 }async function loadEditUserPage(id){
     let user = await getUser(id);
 
+
     if(document.getElementById('voornaam').value != null){
     document.getElementById('voornaam').value = user.name;
     }
@@ -246,19 +255,14 @@ async function createProductSave(){
     let url = 'http://localhost/products';
 
     let formData = new FormData();
-    let products = await getProducts();
 
     let name = document.getElementById('naam').value;
-    let prijs = document.getElementById('prijs').value;
+    let prijs = document.getElementById('prijsCreate').value;
     let merk = document.getElementById('merk').value;
 
     
 
-    products.forEach(product => {
-        if(product.name === name && product.prijs === prijs && product.merk === merk){
-            checkDb = true;
-        }
-    })
+    
 
     if(naam === '' || prijs === '' || merk === '' ){
         document.getElementById('alert').innerHTML = `<div class="bg-red-200 relative text-red-500 py-3 px-3 rounded-lg">
@@ -276,16 +280,20 @@ async function createProductSave(){
                 body: formData
     
             });
+            
         console.log("data send register");
-        document.getElementById('alert').innerHTML = `<div class="bg-green-200 relative text-green-500 py-3 px-3 rounded-lg">
-        Het Product is succesvol opgeslagen!
-    </div>`
+
 
     if(res.status == 409)
     {
         document.getElementById('alert').innerHTML = `<div class="bg-red-200 relative text-red-500 py-3 px-3 rounded-lg">
         Product ${name} ${merk} bestaat al
     </div>` ;
+    }
+    else if(res.status == 200){
+        document.getElementById('alert').innerHTML = `<div class="bg-green-200 relative text-green-500 py-3 px-3 rounded-lg">
+        Het Product is succesvol opgeslagen!
+    </div>`
     }
         return await res.json();
     } catch (error) {
@@ -312,10 +320,7 @@ async function savePicture(){
         formData.append('name', name)
    for(const file of files.files){
          formData.append('files[]', file);
-   }
-
-        console.log(formData)
-        
+   }        
 
      
 
@@ -325,11 +330,8 @@ async function savePicture(){
                 body: formData
     
             });
-            console.log(res.body);
         console.log("picture send register");
-        document.getElementById('alert').innerHTML = `<div class="bg-green-200 relative text-green-500 py-3 px-3 rounded-lg">
-        Het Product is succesvol opgeslagen!
-    </div>`
+
         return await res.json();
     } catch (error) {
         console.log(error);
@@ -386,19 +388,22 @@ async function registerSave() {
             
             try {
                 let res = await fetch(url, {
-                    method: 'POST',
+                    method: 'POST', headers: {Authorization: sessionStorage.getItem('token')},
                     body: formData
         
                 });
             console.log("data send register");
-            document.getElementById('alert').innerHTML = `<div class="bg-green-200 relative text-green-500 py-3 px-3 rounded-lg">
-            User succesvol opgeslagen!
-        </div>`
+           
         if(res.status == 409)
         {
             document.getElementById('alert').innerHTML = `<div class="bg-red-200 relative text-red-500 py-3 px-3 rounded-lg">
             User ${name} ${lastName} bestaat al
         </div>` ;
+        }
+        else if(res.status == 200){
+            document.getElementById('alert').innerHTML = `<div class="bg-green-200 relative text-green-500 py-3 px-3 rounded-lg">
+            User succesvol opgeslagen!
+        </div>`
         }
             return await res.json();
         } catch (error) {
@@ -609,7 +614,7 @@ if(document.getElementById('listUsers') != null){
 }
 const loadUsers = async () => {
     try {
-        const res = await fetch('http://localhost/getUsers');
+        const res = await fetch('http://localhost/getUsers',{headers: {Authorization: sessionStorage.getItem('token') }});
         hpUsers = await res.json();
         displayUsers(hpUsers);
     } catch (err) {
@@ -626,7 +631,7 @@ const displayUsers = (users) => {
             <li>Username: ${user.username}</li>
             <li>email: ${user.email}</li>
             <br>
-            <button id="${user._id}" value="${user._id}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 border border-blue-700 rounded" onclick="window.location.href='editProduct.html';">
+            <button id="${user._id}" value="${user._id}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 border border-blue-700 rounded" onclick="window.location.href='editUser.html';">
             Edit
         </button>
           <button id="delete${user._id}" value="${user._id}" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 border border-red-700 rounded">
@@ -643,8 +648,8 @@ const displayUsers = (users) => {
             
             if(button != null){
             button.addEventListener("click", function(){
-                localStorage.setItem('editId', button.value);
-                window.location.href='editProduct.html';
+                localStorage.setItem('editIdUser', button.value);
+                window.location.href='editUser.html';
             });
             }
             document.getElementById(`delete${user._id}`).addEventListener('click', function(){
@@ -675,7 +680,6 @@ window.onload = async () => {
     let data = sessionStorage.getItem('userSession');
     let id = JSON.parse(data).ID;
     let user = await getUser(id);
-    console.log(user["admin"] + "check");
     if(user["admin"] == 0 || user == null){
         alert('You are not authorized to access this page');
         window.location.href='home.html';

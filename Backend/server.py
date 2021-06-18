@@ -1,6 +1,6 @@
 from flask import Flask, Response, request, session, jsonify, redirect, url_for, flash
 from flask_httpauth import HTTPBasicAuth
-from userCrud import user_api
+from userCrud import user_api, token_required
 from productCrud import product_api
 from flask_cors import CORS
 from connection import db
@@ -10,36 +10,17 @@ from werkzeug.utils import secure_filename
 import os
 import errno
 from tensorflow.keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
-import jwt
+import jwt 
 import datetime
 from functools import wraps
 
 app = Flask(__name__)
 app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
+app.config['jwt_key'] = "AdilZebi"
 CORS(app)
 bcrypt = Bcrypt(app)
 app.register_blueprint(user_api)
 app.register_blueprint(product_api)
-# def token_required(f):
-#     @wraps(f)
-#     def decorated(*args, **kwargs):
-#         token = none
-
-#         if 'x-access-token' in request.headers:
-#             token = request.headers['x-access-token']
-#         if not token:
-#             return Response(response=json.dumps({"message":'Token is missing'}), status=401)
-        
-#         try:
-#             data = jwt.decode(token, app.secret_key)
-#             current_user = db.users.find_one( {"_id": data['_id']} )
-#         except:
-#             return Response(response=json.dumps({"message":'Token is invalid'}), status=401)
-
-#         return f(current_user, *args, **kwargs)
-
-#     return decorated
-
 
 
 
@@ -121,13 +102,23 @@ def upload_file():
 
         flash('File(s) successfully uploaded')
 
-        os.system('py retrain.py --output_graph=retrained_graph.pb --output_labels=retrained_labels.txt --architecture=MobileNet_1.0_224 --image_dir=image_dataset')
+        isTrue = False
+        with open("retrained_labels.txt", "r+") as file_object:
+                    for line in file_object:
+                        if className in line:
+                            isTrue = True
+
+        if isTrue:
+            print('product already exist')
+        else:
+            os.system('py retrain.py --output_graph=retrained_graph.pb --output_labels=retrained_labels.txt --architecture=MobileNet_1.0_224 --image_dir=image_dataset')
 
         return Response(response=json.dumps({"message":'File successfully uploaded'}), status=200, mimetype="application/json")
 
 
 @app.route("/createUser", methods=["POST"])
-def create_user():
+@token_required
+def create_user(current_user):
     try:
         password = request.form["password"]
         pw_hash = bcrypt.generate_password_hash(password)
@@ -142,16 +133,18 @@ def create_user():
         
         data = list(db.users.find())
            
-        
+        isTrue= False
         for userdb in data:
             
             if(User['email'] == userdb['email']):
-                print('User already exist')
-                return Response(response=json.dumps({"message": "user already exist"}), status=409,mimetype="application/json")
-            else:
-                print('Good')
-                dbResponse = db.users.insert_one(User)
-                return Response(response=json.dumps({"message": "user created"}),status=200,mimetype="application/json")
+                isTrue = True
+         
+
+        if isTrue:
+            return Response(response=json.dumps({"message": "user already exist"}), status=409,mimetype="application/json")
+        else:
+            dbResponse = db.users.insert_one(User)
+            return Response(response=json.dumps({"message": "user created"}),status=200,mimetype="application/json")
 
        
               
@@ -171,17 +164,17 @@ def login():
     
 
     userDb = db.users.find_one( {"email": user['email']} )
-    #userDb['password'] == user['username']
+
+    userID =  str(userDb['_id'])
     passwordDb =userDb['password']
-    #bcrypt.check_password_hash(passwordDb, user['password'])
     if userDb['email'] == user['email'] and bcrypt.check_password_hash(passwordDb, user['password'])   :
-     #   token = jwt.encode({'_id': userDb['_id'], 'exp': datetime.datetime.utcnow()+ datetime.timedelta(minutes=30)})
+        token = jwt.encode({'_id': userID, 'exp': datetime.datetime.utcnow()+ datetime.timedelta(minutes=120)},app.config['jwt_key'])
         sessionUser = {}
         sessionUser['ID'] = str(userDb['_id'])
         sessionUser['email'] = user['email']
         sessionUser['isLogedIn'] = True
         
-        return Response(response=json.dumps(sessionUser ), status=200, mimetype="application/json")
+        return Response(response=json.dumps({"session": sessionUser, "token": token.decode('utf-8')} ), status=200, mimetype="application/json")
 
     else:
         return Response(response=json.dumps({"message": "Wrong password"}), status=500)

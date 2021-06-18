@@ -54,11 +54,26 @@ def send_predictionRes():
 
 
 @product_api.route("/products", methods=["POST"])
+
 def create_product():
     try:
         product = {"name": request.form["name"],
                 "prijs": request.form["prijs"], "merk":request.form["merk"]}
-        dbResponse = db.products.insert_one(product)
+        
+        data = list(db.products.find())
+        isTrue = False
+        for productdb in data:
+
+            if(product['name'] == productdb['name']):
+                isTrue = True
+          
+        
+        if isTrue:
+            return Response(response=json.dumps({"message": "product already exist"}), status=409,mimetype="application/json")
+        else:
+            dbResponse = db.products.insert_one(product)
+            return Response(response=json.dumps({"message": "product created", "id": f"{dbResponse.inserted_id}"}),status=200, mimetype="application/json")
+
 
         name = product['name']
 
@@ -69,15 +84,6 @@ def create_product():
                 else:
                     file_object.write(name)
 
-        data = list(db.produts.find())
-        
-        for productdb in data:
-            
-            if(product['name'] == productdb['name']):
-                print('Product already exist')
-                return Response(response=json.dumps({"message": "product already exist"}), status=409,mimetype="application/json")
-            else:
-                return Response(response=json.dumps({"message": "product created", "id": f"{dbResponse.inserted_id}"}),status=200, mimetype="application/json")
    
     except Exception as ex:
         print(ex)
